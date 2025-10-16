@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Configuration par défaut pour les notifications sonores -->
+        <record id="kitchen_sound_config_default" model="ir.config_parameter">
+            <field name="key">kitchen_screen_extension.sound_enabled_default</field>
+            <field name="value">True</field>
+        </record>
+
+        <record id="kitchen_sound_volume_default" model="ir.config_parameter">
+            <field name="key">kitchen_screen_extension.default_volume</field>
+            <field name="value">0.7</field>
+        </record>
+
+        <record id="kitchen_notification_timeout" model="ir.config_parameter">
+            <field name="key">kitchen_screen_extension.notification_timeout</field>
+            <field name="value">5000</field>
+        </record>
+
+        <record id="kitchen_history_limit" model="ir.config_parameter">
+            <field name="key">kitchen_screen_extension.history_limit</field>
+            <field name="value">50</field>
+        </record>
+
+        <!-- Configuration des canaux de notification par type -->
+        <record id="kitchen_channel_new_order" model="ir.config_parameter">
+            <field name="key">kitchen_screen_extension.channel_new_order</field>
+            <field name="value">kitchen_sound_notification</field>
+        </record>
+
+        <record id="kitchen_channel_order_update" model="ir.config_parameter">
+            <field name="key">kitchen_screen_extension.channel_order_update</field>
+            <field name="value">kitchen_sound_notification</field>
+        </record>
+
+        <!-- Configuration des sons par type de notification -->
+        <record id="sound_config_new_order" model="ir.config_parameter">
+            <field name="key">kitchen_screen_extension.sound_new_order_freq</field>
+            <field name="value">[800, 600]</field>
+        </record>
+
+        <record id="sound_config_accepted" model="ir.config_parameter">
+            <field name="key">kitchen_screen_extension.sound_accepted_freq</field>
+            <field name="value">[600, 800]</field>
+        </record>
+
+        <record id="sound_config_completed" model="ir.config_parameter">
+            <field name="key">kitchen_screen_extension.sound_completed_freq</field>
+            <field name="value">[500, 700, 500]</field>
+        </record>
+
+        <record id="sound_config_cancelled" model="ir.config_parameter">
+            <field name="key">kitchen_screen_extension.sound_cancelled_freq</field>
+            <field name="value">[400, 300]</field>
+        </record>
+
+        <!-- Messages de notification configurables -->
+        <record id="notification_message_new_order" model="ir.config_parameter">
+            <field name="key">kitchen_screen_extension.message_new_order</field>
+            <field name="value">Nouvelle Commande</field>
+        </record>
+
+        <record id="notification_message_accepted" model="ir.config_parameter">
+            <field name="key">kitchen_screen_extension.message_accepted</field>
+            <field name="value">Commande Acceptée</field>
+        </record>
+
+        <record id="notification_message_completed" model="ir.config_parameter">
+            <field name="key">kitchen_screen_extension.message_completed</field>
+            <field name="value">Commande Terminée</field>
+        </record>
+
+        <record id="notification_message_cancelled" model="ir.config_parameter">
+            <field name="key">kitchen_screen_extension.message_cancelled</field>
+            <field name="value">Commande Annulée</field>
+        </record>
+
+        <!-- Configuration pour l'affichage -->
+        <record id="kitchen_animation_enabled" model="ir.config_parameter">
+            <field name="key">kitchen_screen_extension.animations_enabled</field>
+            <field name="value">True</field>
+        </record>
+
+        <record id="kitchen_toast_position" model="ir.config_parameter">
+            <field name="key">kitchen_screen_extension.toast_position</field>
+            <field name="value">top-right</field>
+        </record>
+
+        <record id="kitchen_visual_effects" model="ir.config_parameter">
+            <field name="key">kitchen_screen_extension.visual_effects_enabled</field>
+            <field name="value">True</field>
+        </record>
+    </data>
+</odoo>

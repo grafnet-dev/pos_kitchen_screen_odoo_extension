@@ -18,14 +18,39 @@ Long description of module's purpose
     'version': '0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['base'],
+    'depends': ['point_of_sale','pos_restaurant','pos_kitchen_screen_odoo', 'bus', 'web'],
 
     # always loaded
     'data': [
         # 'security/ir.model.access.csv',
-        'views/views.xml',
-        'views/templates.xml',
+        'views/kitchen_screen_views.xml',
+        'views/pos_config_views.xml',
+        
+        
+        
+       
+   
     ],
+    'assets': {
+        'web.assets_frontend': [
+            'pos_kitchen_screen_odoo_extension/static/src/js/kitchen_notification_service.js',
+            'pos_kitchen_screen_odoo_extension/static/src/js/kitchen_integration.js',
+            'pos_kitchen_screen_odoo_extension/static/src/xml/kitchen_screen_template.xml',
+            
+            
+        ],
+        'web.assets_backend': [
+             'pos_kitchen_screen_odoo_extension/static/src/js/kitchen_notification_service.js',
+             'pos_kitchen_screen_odoo_extension/static/src/js/kitchen_integration.js',
+             'pos_kitchen_screen_odoo/static/src/js/kitchen_screen.js',
+             'pos_kitchen_screen_odoo/static/src/xml/kitchen_screen_templates.xml',
+             
+             
+             
+             
+        ],
+    },
+    
     # only loaded in demonstration mode
     'demo': [
         'demo/demo.xml',

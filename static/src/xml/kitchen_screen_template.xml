@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <!-- Template d'extension ULTRA-SIMPLIFIÉ -->
+    <template id="kitchen_custom_dashboard_extension" name="Kitchen Custom Dashboard Extension">
+        <t t-extend="KitchenCustomDashBoard">
+            
+            <!-- Modifier uniquement l'affichage de la carte -->
+            <xpath expr="//div[contains(@class, 'card')]//span[contains(text(), 'Time')]/.." position="before">
+                <li t-if="order">
+                    <b><span style="font-size: 12px;">POS:</span></b>
+                    <span style="font-size: 12px;">
+                        <t t-if="order.get('config_id')" t-esc="order.config_id[1]"/>
+                        <t t-else="">N/A</t>
+                    </span>
+                </li>
+            </xpath>
+
+        </t>
+    </template>
+
+    <!-- CSS minimaliste -->
+    <template id="kitchen_screen_extension_css" name="Kitchen Extension CSS">
+        <style>
+            /* Animation pour les nouvelles commandes */
+            @keyframes pulse-border {
+                0%, 100% {
+                    border-color: #28a745;
+                    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+                }
+                50% {
+                    border-color: #20c997;
+                    box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+                }
+            }
+
+            .new-order-animation {
+                animation: pulse-border 2s ease-in-out 3;
+                border: 3px solid #28a745 !important;
+            }
+
+            .card.hidden-by-category {
+                display: none !important;
+            }
+        </style>
+    </template>
+</odoo>
