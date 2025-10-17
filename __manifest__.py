@@ -43,6 +43,7 @@ Long description of module's purpose
              'pos_kitchen_screen_odoo_extension/static/src/js/kitchen_notification_service.js',
              'pos_kitchen_screen_odoo_extension/static/src/js/kitchen_integration.js',
              'pos_kitchen_screen_odoo/static/src/js/kitchen_screen.js',
+             'pos_kitchen_screen_odoo/static/src/js/kitchen_screen_ext.js'
              'pos_kitchen_screen_odoo/static/src/xml/kitchen_screen_templates.xml',
              
              

@@ -1,13 +1,139 @@
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models
 import logging
+import pytz
+from datetime import datetime
 
 _logger = logging.getLogger(__name__)
 
 
 class PosOrder(models.Model):
-    """Extension de pos.order pour gérer les notifications par catégorie"""
     _inherit = 'pos.order'
+    
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Routage multi-écrans de cuisine selon les catégories"""
+        # On garde le comportement d'origine
+        res = super().create(vals_list)
+
+        # Liste des ordres à notifier
+        orders_to_notify = []
+
+        for order in res:
+            # On récupère tous les écrans liés à ce POS
+            kitchen_screens = self.env["kitchen.screen"].search([
+                ("pos_config_id", "=", order.config_id.id)
+            ])
+
+            if not kitchen_screens:
+                continue
+
+            # Drapeau pour savoir si cet ordre a des produits de cuisine
+            has_kitchen_items = False
+
+            # On parcourt les lignes du ticket
+            for line in order.lines:
+                # On récupère les catégories du produit
+                product_categs = line.product_id.pos_categ_ids.ids
+
+                # On vérifie pour chaque écran de cuisine
+                for screen in kitchen_screens:
+                    # Si le produit appartient à cet écran
+                    if any(categ.id in product_categs for categ in screen.pos_categ_ids):
+                        line.is_cooking = True
+                        has_kitchen_items = True
+
+                        # ✅ Notification spécifique à cet écran
+                        message = {
+                            'res_model': self._name,
+                            'message': 'pos_order_created',
+                            'order_id': order.id,
+                            'config_id': order.config_id.id,
+                            'screen_id': screen.id,
+                            'screen_name': screen.name,
+                            'order_ref': order.name,
+                        }
+                        channel = f'pos_order_created_{order.config_id.id}'
+                        self.env["bus.bus"]._sendone(channel, "notification", message)
+
+            # Si au moins une ligne est “cooking”, on marque la commande
+            if has_kitchen_items:
+                order.is_cooking = True
+                order.order_ref = order.name
+                if order.order_status != 'draft':
+                    order.order_status = 'draft'
+                orders_to_notify.append(order)
+
+        self.env.cr.commit()
+        return res
+    
+    @api.model
+    def get_details(self, shop_id, screen_id=None, *args, **kwargs):
+        """Renvoie uniquement les lignes correspondant à l'écran donné."""
+        # Etzpe 1 : on récupère l'écran spécifique s'il est passé
+        if screen_id:
+            kitchen_screen = self.env["kitchen.screen"].sudo().browse(screen_id)
+        else:
+            kitchen_screen = self.env["kitchen.screen"].sudo().search(
+                [("pos_config_id", "=", shop_id)]
+            )
+
+        if not kitchen_screen:
+            return {"orders": [], "order_lines": []}
+
+        # etape 2 : on récupère toutes les commandes concernées
+        pos_orders = self.env["pos.order"].search([
+            ("is_cooking", "=", True),
+            ("config_id", "=", shop_id),
+            ("state", "not in", ["cancel", "paid"]),
+            ("order_status", "!=", "cancel"),
+            "|", "|",
+            ("order_status", "=", "draft"),
+            ("order_status", "=", "waiting"),
+            ("order_status", "=", "ready")
+        ], order="date_order")
+
+        pos_orders = pos_orders.filtered(lambda o: not (
+            o.state == "paid" and o.order_status == "ready"))
+
+        # étape 3 : on filtre les lignes selon les catégories de cet écran
+        pos_lines = pos_orders.lines.filtered(
+            lambda line: line.is_cooking and any(
+                categ.id in kitchen_screen.pos_categ_ids.ids
+                for categ in line.product_id.pos_categ_ids
+            )
+        )
+
+        # Étape 4 : préparation du résultat
+        values = {"orders": pos_orders.read(), "order_lines": pos_lines.read()}
+
+        # Étape 5 : conversion d’heure (inchangée)
+        user_tz_str = self.env.user.tz or 'UTC'
+        user_tz = pytz.timezone(user_tz_str)
+        utc = pytz.utc
+
+        for value in values['orders']:
+            if value.get('table_id'):
+                value['floor'] = value['table_id'][1].split(',')[0].strip()
+
+            date_str = value['date_order']
+            try:
+                if isinstance(date_str, str):
+                    utc_dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+                    utc_dt = utc.localize(utc_dt)
+                else:
+                    utc_dt = utc.localize(value['date_order'])
+
+                local_dt = utc_dt.astimezone(user_tz)
+                value['hour'] = local_dt.hour
+                value['formatted_minutes'] = f"{local_dt.minute:02d}"
+                value['minutes'] = local_dt.minute
+            except Exception:
+                value['hour'] = 0
+                value['minutes'] = 0
+                value['formatted_minutes'] = "00"
+
+        return values
 
     @api.model_create_multi
     def create(self, vals_list):

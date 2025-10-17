@@ -1,0 +1,16 @@
+<odoo>
+    <data>
+        <record id="kitchen_screen_button_inherit" model="ir.ui.view">
+            <field name="name">kitchen.screen.button.inherit</field>
+            <field name="model">kitchen.screen</field>
+            <field name="inherit_id" ref="pos_kitchen_screen.kitchen_screen_form_view"/> <!-- adapte le ref exact -->
+            <field name="arch" type="xml">
+                <xpath expr="//button[@name='%(kitchen_custom_dashboard_action)d']" position="attributes">
+                    <attribute name="context">
+                        {'default_shop_id': shop_number, 'default_screen_id': active_id}
+                    </attribute>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

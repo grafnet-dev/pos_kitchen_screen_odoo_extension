@@ -108,7 +108,7 @@ class KitchenScreen(models.Model):
         return {
             'type': 'ir.actions.act_url',
             'target': 'new',
-            'url': f'/pos/kitchen?screen_id={self.id}',  
+            'url': f'/pos/kitchen?screen_id={self.id}',
         }
 
     def kitchen_screen(self):
