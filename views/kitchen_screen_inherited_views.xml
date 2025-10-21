@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ========================================== -->
+    <!-- VUE FORMULAIRE HÉRITÉE - Kitchen Screen   -->
+    <!-- ========================================== -->
+    <record id="kitchen_screen_view_form_inherit" model="ir.ui.view">
+        <field name="name">kitchen.screen.view.form.inherit</field>
+        <field name="model">kitchen.screen</field>
+        <field name="inherit_id" ref="pos_kitchen_screen_odoo.kitchen_screen_view_form"/>
+        <field name="arch" type="xml">
+            
+            <!-- Ajouter un header avec des boutons d'action -->
+            <xpath expr="//form/sheet" position="before">
+                <header>
+                    <button name="action_duplicate_screen" 
+                            type="object" 
+                            string="Duplicate Screen"
+                            class="btn-secondary"
+                            icon="fa-clone"/>
+                    <button name="action_view_orders" 
+                            type="object" 
+                            string="View Orders"
+                            class="btn-info"
+                            icon="fa-cutlery"/>
+                    <button name="toggle_active" 
+                            type="object" 
+                            string="Toggle Active/Inactive"
+                            class="btn-warning"
+                            icon="fa-power-off"/>
+                    <field name="active" widget="boolean_toggle" options="{'terminology': 'active'}"/>
+                </header>
+            </xpath>
+
+            <!-- Ajouter le nom de l'écran en premier -->
+            <xpath expr="//div[@id='pos_config_id']" position="before">
+                <div class="col-12 col-lg-6 o_setting_box" id="screen_name">
+                    <div class="o_setting_left_pane">
+                        <i class="fa fa-tv fa-2x text-primary"/>
+                    </div>
+                    <div class="o_setting_right_pane">
+                        <label for="name" string="Screen Name"/>
+                        <div class="text-muted">
+                            <div>
+                                <field name="name" 
+                                       placeholder="e.g., Grill Station, Drinks Bar..."
+                                       required="1"/>
+                            </div>
+                            Unique name to identify this kitchen screen
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+
+            <!-- Modifier le champ POS pour retirer le domaine restrictif -->
+            <xpath expr="//field[@name='pos_config_id']" position="attributes">
+                <attribute name="domain">[('module_pos_restaurant', '=', True)]</attribute>
+                <attribute name="options">{'no_create': True, 'no_open': True}</attribute>
+            </xpath>
+
+            <!-- Ajouter l'ordre d'affichage et la description -->
+            <xpath expr="//div[@id='pos_categ_ids']" position="after">
+                <div class="col-12 col-lg-6 o_setting_box" id="display_order">
+                    <div class="o_setting_left_pane">
+                        <i class="fa fa-sort-numeric-asc fa-2x text-success"/>
+                    </div>
+                    <div class="o_setting_right_pane">
+                        <label for="display_order"/>
+                        <div class="text-muted">
+                            <div>
+                                <field name="display_order"/>
+                            </div>
+                            Order in which this screen appears in the list
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 o_setting_box" id="screen_description">
+                    <div class="o_setting_left_pane">
+                        <i class="fa fa-info-circle fa-2x text-info"/>
+                    </div>
+                    <div class="o_setting_right_pane">
+                        <label for="description"/>
+                        <div class="text-muted">
+                            <div>
+                                <field name="description" 
+                                       placeholder="Describe the purpose of this screen..."/>
+                            </div>
+                            Optional description for internal reference
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+
+            <!-- Ajouter les champs techniques (invisibles mais utiles) -->
+            <xpath expr="//field[@name='shop_number']" position="after">
+                <field name="screen_code" invisible="1"/>
+                <field name="display_name_custom" invisible="1"/>
+            </xpath>
+
+            <!-- Modifier le contexte du bouton Kitchen Screen -->
+            <xpath expr="//button[@name='%(pos_kitchen_screen_odoo.kitchen_custom_dashboard_action)d']" position="attributes">
+                <attribute name="context">{'default_shop_id': shop_number, 'screen_id': id}</attribute>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- ========================================== -->
+    <!-- VUE LISTE HÉRITÉE - Kitchen Screen        -->
+    <!-- ========================================== -->
+    <record id="kitchen_screen_view_tree_inherit" model="ir.ui.view">
+        <field name="name">kitchen.screen.view.tree.inherit</field>
+        <field name="model">kitchen.screen</field>
+        <field name="inherit_id" ref="pos_kitchen_screen_odoo.kitchen_screen_view_tree"/>
+        <field name="arch" type="xml">
+            
+            <!-- Ajouter le nom de l'écran -->
+            <xpath expr="//field[@name='sequence']" position="after">
+                <field name="name" string="Screen Name"/>
+            </xpath>
+
+            <!-- Ajouter l'état actif avec un badge -->
+            <xpath expr="//field[@name='pos_categ_ids']" position="after">
+                <field name="active" widget="boolean_toggle"/>
+                <field name="display_order"/>
+                <field name="screen_code" optional="hide"/>
+            </xpath>
+
+            <!-- Colorer les lignes selon l'état -->
+            <xpath expr="//list" position="attributes">
+                <attribute name="decoration-muted">active == False</attribute>
+                <attribute name="decoration-success">active == True</attribute>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- ========================================== -->
+    <!-- VUE RECHERCHE HÉRITÉE - Kitchen Screen    -->
+    <!-- ========================================== -->
+    <record id="kitchen_screen_view_search" model="ir.ui.view">
+        <field name="name">kitchen.screen.view.search</field>
+        <field name="model">kitchen.screen</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" string="Screen Name"/>
+                <field name="sequence"/>
+                <field name="pos_config_id"/>
+                <field name="pos_categ_ids"/>
+                <field name="screen_code"/>
+                
+                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Inactive" name="inactive" domain="[('active', '=', False)]"/>
+                
+                <separator/>
+                <filter string="With Preparation Stage Change" 
+                        name="with_preparation" 
+                        domain="[('is_preparation_complete', '=', True)]"/>
+                
+                <separator/>
+                <group expand="0" string="Group By">
+                    <filter string="POS Configuration" 
+                            name="group_pos" 
+                            context="{'group_by': 'pos_config_id'}"/>
+                    <filter string="Active Status" 
+                            name="group_active" 
+                            context="{'group_by': 'active'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ========================================== -->
+    <!-- VUE KANBAN (Optionnelle)                  -->
+    <!-- ========================================== -->
+    <record id="kitchen_screen_view_kanban" model="ir.ui.view">
+        <field name="name">kitchen.screen.view.kanban</field>
+        <field name="model">kitchen.screen</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_mobile">
+                <field name="name"/>
+                <field name="pos_config_id"/>
+                <field name="pos_categ_ids"/>
+                <field name="active"/>
+                <field name="sequence"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div t-attf-class="oe_kanban_card oe_kanban_global_click #{record.active.raw_value ? '' : 'o_kanban_disabled'}">
+                            <div class="o_kanban_content">
+                                <div class="o_kanban_primary">
+                                    <strong class="o_kanban_record_title">
+                                        <field name="name"/>
+                                    </strong>
+                                </div>
+                                <div class="o_kanban_secondary">
+                                    <div>
+                                        <i class="fa fa-desktop"/> 
+                                        <field name="pos_config_id"/>
+                                    </div>
+                                    <div>
+                                        <i class="fa fa-tags"/> 
+                                        <field name="pos_categ_ids" widget="many2many_tags"/>
+                                    </div>
+                                    <div class="text-muted">
+                                        <small>
+                                            <field name="sequence"/>
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- ========================================== -->
+    <!-- MODIFICATION DE L'ACTION PRINCIPALE      -->
+    <!-- ========================================== -->
+    <record id="pos_kitchen_screen_odoo.kitchen_screen_action" model="ir.actions.act_window">
+        <field name="view_mode">list,kanban,form</field>
+        <field name="context">{'search_default_active': 1}</field>
+    </record>
+
+</odoo>

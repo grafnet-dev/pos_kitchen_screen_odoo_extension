@@ -1,234 +1,294 @@
 /** @odoo-module **/
 
 import { registry } from "@web/core/registry";
-import { Component, useState, onMounted, onWillUnmount } from "@odoo/owl";
+import { Component, onWillStart, onMounted, onWillUnmount, useState } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 
-class KitchenScreenView extends Component {
+/**
+ * Composant d'affichage des commandes de cuisine avec notifications temps réel
+ */
+export class KitchenScreenDisplay extends Component {
     setup() {
         this.orm = useService("orm");
         this.bus = useService("bus_service");
         this.notification = useService("notification");
+        this.audio = new Audio('/pos_kitchen_screen_odoo_extension/static/src/sound/notification.mp3');
         
         this.state = useState({
-            screenId: this.props.action.context.screen_id,
-            screenConfig: null,
             orders: [],
-            statistics: {
-                draft_count: 0,
-                waiting_count: 0,
-                ready_count: 0,
-                total_count: 0
-            },
+            orderLines: [],
+            screenId: null,
+            configId: null,
             loading: true,
-            error: null
+            lastUpdate: null,
         });
 
-        this.audioContext = null;
-        this.refreshInterval = null;
+        onWillStart(async () => {
+            await this.loadInitialData();
+            this.subscribeToNotifications();
+        });
 
         onMounted(() => {
-            this.initializeScreen();
+            // Rafraîchissement périodique (backup si notification échoue)
+            this.refreshInterval = setInterval(() => {
+                this.refreshOrders();
+            }, 30000); // Toutes les 30 secondes
         });
 
         onWillUnmount(() => {
-            this.cleanup();
+            if (this.refreshInterval) {
+                clearInterval(this.refreshInterval);
+            }
+            this.unsubscribeFromNotifications();
         });
     }
 
-    async initializeScreen() {
+    /**
+     * Chargement initial des données
+     */
+    async loadInitialData() {
         try {
-            // Charger la configuration de l'écran
-            const config = await this.orm.call(
-                "pos.kitchen.screen",
-                "get_screen_config",
-                [this.state.screenId]
-            );
+            // Récupérer l'ID de l'écran depuis l'URL ou le contexte
+            const urlParams = new URLSearchParams(window.location.search);
+            this.state.screenId = parseInt(urlParams.get('screen_id')) || null;
+            this.state.configId = parseInt(urlParams.get('config_id')) || null;
 
-            if (!config) {
-                throw new Error("Configuration de l'écran introuvable");
+            if (!this.state.screenId || !this.state.configId) {
+                throw new Error("Screen ID et Config ID requis");
             }
 
-            this.state.screenConfig = config;
-            
-            // Charger les commandes initiales
-            await this.loadOrders();
-            
-            // S'abonner aux notifications
-            this.subscribeToNotifications();
-            
-            // Configurer le rafraîchissement automatique
-            if (config.auto_refresh) {
-                this.setupAutoRefresh(config.refresh_interval);
-            }
-            
-            this.state.loading = false;
-            
+            await this.refreshOrders();
         } catch (error) {
-            console.error("Erreur d'initialisation:", error);
-            this.state.error = error.message;
+            console.error("[KITCHEN] Erreur lors du chargement initial:", error);
+            this.notification.add("Erreur de chargement des données", {
+                type: "danger",
+            });
+        } finally {
             this.state.loading = false;
         }
     }
 
-    async loadOrders() {
+    /**
+     * Rafraîchir les commandes depuis le serveur
+     */
+    async refreshOrders() {
         try {
-            const orders = await this.orm.call(
-                "pos.kitchen.screen",
-                "get_screen_orders",
-                [this.state.screenId]
+            const result = await this.orm.call(
+                "pos.order",
+                "get_details",
+                [this.state.configId, this.state.screenId]
             );
-            
-            this.state.orders = orders || [];
-            
-            // Charger les statistiques
-            const stats = await this.orm.call(
-                "pos.kitchen.screen",
-                "get_screen_statistics",
-                [this.state.screenId]
+
+            this.state.orders = result.orders || [];
+            this.state.orderLines = result.order_lines || [];
+            this.state.lastUpdate = new Date().toLocaleTimeString();
+
+            console.log(
+                `[KITCHEN] Rafraîchissement: ${this.state.orders.length} commandes, ` +
+                `${this.state.orderLines.length} lignes`
             );
-            
-            if (stats) {
-                this.state.statistics = stats;
-            }
-            
         } catch (error) {
-            console.error("Erreur de chargement des commandes:", error);
+            console.error("[KITCHEN] Erreur lors du rafraîchissement:", error);
         }
     }
 
+    /**
+     * S'abonner aux notifications du bus Odoo
+     */
     subscribeToNotifications() {
-        const channel = `kitchen_screen_${this.state.screenId}`;
+        const channel = `kitchen.screen.${this.state.screenId}`;
         
+        console.log(`[KITCHEN] Abonnement au canal: ${channel}`);
+
+        // Écouter les nouvelles commandes
         this.bus.addEventListener("notification", ({ detail }) => {
-            if (detail.type === "notification") {
-                const payload = detail.payload;
-                
-                if (payload.message === "kitchen_sound_notification" && 
-                    payload.screen_id === this.state.screenId) {
-                    this.handleNotification(payload);
-                }
+            const [channelName, notifType, message] = detail;
+            
+            if (channelName === channel) {
+                this.handleNotification(notifType, message);
             }
         });
 
+        // S'abonner explicitement au canal
         this.bus.addChannel(channel);
     }
 
-    async handleNotification(notification) {
-        console.log("Notification reçue:", notification);
-        
-        // Jouer le son
-        if (notification.sound_config?.enabled) {
-            this.playSound(notification.sound_config);
+    /**
+     * Se désabonner des notifications
+     */
+    unsubscribeFromNotifications() {
+        const channel = `kitchen.screen.${this.state.screenId}`;
+        this.bus.deleteChannel(channel);
+        console.log(`[KITCHEN] Désabonnement du canal: ${channel}`);
+    }
+
+    /**
+     * Gérer les notifications reçues
+     */
+    handleNotification(notifType, message) {
+        console.log(`[KITCHEN] 📨 Notification reçue:`, notifType, message);
+
+        switch (notifType) {
+            case "new_order":
+                this.handleNewOrder(message);
+                break;
+            
+            case "order_status_change":
+                this.handleStatusChange(message);
+                break;
+            
+            case "order_line_updated":
+                this.handleLineUpdate(message);
+                break;
+            
+            default:
+                console.warn(`[KITCHEN] Type de notification inconnu: ${notifType}`);
         }
+    }
+
+    /**
+     * Gérer une nouvelle commande
+     */
+    async handleNewOrder(message) {
+        console.log(`[KITCHEN] 🆕 Nouvelle commande: ${message.order_name}`);
+        
+        // Son de notification
+        this.playNotificationSound();
         
         // Afficher une notification visuelle
-        const messages = {
-            'new_order': 'Nouvelle commande',
-            'order_accepted': 'Commande acceptée',
-            'order_completed': 'Commande terminée',
-            'order_cancelled': 'Commande annulée'
-        };
-        
         this.notification.add(
-            `${messages[notification.notification_type]}: ${notification.order_ref}`,
-            { type: 'info' }
+            `Nouvelle commande: ${message.order_ref || message.order_name}`,
+            {
+                type: "success",
+                title: "Nouvelle commande",
+                sticky: false,
+            }
+        );
+
+        // Rafraîchir immédiatement l'affichage
+        await this.refreshOrders();
+        
+        // Animation visuelle pour la nouvelle commande
+        this.highlightOrder(message.order_id);
+    }
+
+    /**
+     * Gérer un changement de statut
+     */
+    async handleStatusChange(message) {
+        console.log(
+            `[KITCHEN] 🔄 Changement statut commande ${message.order_name}: ${message.order_status}`
         );
         
-        // Rafraîchir les commandes
-        await this.loadOrders();
+        const statusLabels = {
+            draft: "En attente",
+            waiting: "En préparation",
+            ready: "Prête",
+            cancel: "Annulée"
+        };
+
+        this.notification.add(
+            `Commande ${message.order_ref}: ${statusLabels[message.order_status] || message.order_status}`,
+            {
+                type: message.order_status === "ready" ? "success" : "info",
+            }
+        );
+
+        // Rafraîchir l'affichage
+        await this.refreshOrders();
     }
 
-    playSound(soundConfig) {
+    /**
+     * Gérer une mise à jour de ligne
+     */
+    async handleLineUpdate(message) {
+        console.log(`[KITCHEN] 📝 Ligne mise à jour: ${message.product_name}`);
+        
+        // Rafraîchir l'affichage
+        await this.refreshOrders();
+    }
+
+    /**
+     * Jouer le son de notification
+     */
+    playNotificationSound() {
         try {
-            let soundUrl;
-            
-            if (soundConfig.file === 'custom' && soundConfig.custom_sound) {
-                soundUrl = soundConfig.custom_sound;
-            } else {
-                soundUrl = `/point_of_sale/static/src/sounds/${soundConfig.file}.wav`;
-            }
-            
-            const audio = new Audio(soundUrl);
-            audio.volume = soundConfig.volume || 0.5;
-            audio.play().catch(err => {
-                console.warn("Impossible de jouer le son:", err);
+            this.audio.currentTime = 0;
+            this.audio.play().catch(err => {
+                console.warn("[KITCHEN] Impossible de jouer le son:", err);
             });
-            
         } catch (error) {
-            console.error("Erreur lors de la lecture du son:", error);
+            console.error("[KITCHEN] Erreur audio:", error);
         }
     }
 
-    setupAutoRefresh(interval) {
-        this.refreshInterval = setInterval(() => {
-            this.loadOrders();
-        }, interval * 1000);
+    /**
+     * Mettre en surbrillance une commande
+     */
+    highlightOrder(orderId) {
+        setTimeout(() => {
+            const orderElement = document.querySelector(`[data-order-id="${orderId}"]`);
+            if (orderElement) {
+                orderElement.classList.add('new-order-highlight');
+                setTimeout(() => {
+                    orderElement.classList.remove('new-order-highlight');
+                }, 3000);
+            }
+        }, 100);
     }
 
+    /**
+     * Changer le statut d'une commande
+     */
     async changeOrderStatus(orderId, newStatus) {
         try {
-            let method;
+            await this.orm.write("pos.order", [orderId], {
+                order_status: newStatus
+            });
+
+            console.log(`[KITCHEN] Statut changé pour commande ${orderId}: ${newStatus}`);
             
-            switch(newStatus) {
-                case 'waiting':
-                    method = 'order_progress_draft';
-                    break;
-                case 'ready':
-                    method = 'order_progress_change';
-                    break;
-                case 'cancel':
-                    method = 'order_progress_cancel';
-                    break;
-                default:
-                    return;
-            }
-            
-            await this.orm.call("pos.order", method, [[orderId]]);
-            await this.loadOrders();
-            
+            // Le rafraîchissement sera fait par la notification
         } catch (error) {
-            console.error("Erreur changement statut:", error);
-            this.notification.add("Erreur lors du changement de statut", { type: "danger" });
+            console.error("[KITCHEN] Erreur changement statut:", error);
+            this.notification.add("Erreur lors du changement de statut", {
+                type: "danger",
+            });
         }
     }
 
-    cleanup() {
-        if (this.refreshInterval) {
-            clearInterval(this.refreshInterval);
+    /**
+     * Obtenir les lignes d'une commande spécifique
+     */
+    getOrderLines(orderId) {
+        return this.state.orderLines.filter(line => line.order_id[0] === orderId);
+    }
+
+    /**
+     * Formater l'heure d'une commande
+     */
+    formatOrderTime(order) {
+        if (order.hour !== undefined && order.formatted_minutes) {
+            return `${order.hour}:${order.formatted_minutes}`;
         }
+        return "N/A";
     }
 
-    getStatusColor(status) {
-        const colors = {
-            'draft': 'warning',
-            'waiting': 'info',
-            'ready': 'success',
-            'cancel': 'danger'
+    /**
+     * Obtenir la classe CSS selon le statut
+     */
+    getStatusClass(status) {
+        const statusClasses = {
+            draft: "status-draft",
+            waiting: "status-waiting",
+            ready: "status-ready",
+            cancel: "status-cancel"
         };
-        return colors[status] || 'secondary';
-    }
-
-    getStatusLabel(status) {
-        const labels = {
-            'draft': 'Nouveau',
-            'waiting': 'En cours',
-            'ready': 'Prêt',
-            'cancel': 'Annulé'
-        };
-        return labels[status] || status;
-    }
-
-    formatDate(dateStr) {
-        if (!dateStr) return '';
-        const date = new Date(dateStr);
-        return date.toLocaleTimeString('fr-FR', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-        });
+        return statusClasses[status] || "status-unknown";
     }
 }
 
-KitchenScreenView.template = "pos_kitchen_screen.KitchenScreenView";
+KitchenScreenDisplay.template = "kitchen_screen.KitchenScreenDisplay";
 
-registry.category("actions").add("kitchen_screen_view", KitchenScreenView);
+// Enregistrer le composant dans le registre Odoo
+registry.category("actions").add("kitchen_screen_display", KitchenScreenDisplay);

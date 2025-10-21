@@ -1,13 +1,13 @@
 <odoo>
     <data>
-        <record id="kitchen_screen_button_inherit" model="ir.ui.view">
-            <field name="name">kitchen.screen.button.inherit</field>
+        <record id="kitchen_screen_view_form_inherit" model="ir.ui.view">
+            <field name="name">kitchen.screen.view.form.inherit</field>
             <field name="model">kitchen.screen</field>
-            <field name="inherit_id" ref="pos_kitchen_screen.kitchen_screen_form_view"/> <!-- adapte le ref exact -->
+            <field name="inherit_id" ref="pos_kitchen_screen_odoo.kitchen_screen_view_form"/> <!-- adapte le ref exact -->
             <field name="arch" type="xml">
-                <xpath expr="//button[@name='%(kitchen_custom_dashboard_action)d']" position="attributes">
+                <xpath expr="//button[@name='%(pos_kitchen_screen_odoo.kitchen_custom_dashboard_action)d']" position="attributes">
                     <attribute name="context">
-                        {'default_shop_id': shop_number, 'default_screen_id': active_id}
+                        {'default_shop_id': shop_number, 'default_screen_id': id}
                     </attribute>
                 </xpath>
             </field>

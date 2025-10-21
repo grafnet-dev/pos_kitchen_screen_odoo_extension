@@ -23,8 +23,7 @@ Long description of module's purpose
     # always loaded
     'data': [
         # 'security/ir.model.access.csv',
-        'views/kitchen_screen_views.xml',
-        'views/pos_config_views.xml',
+      'views/kitchen_screen_inherited_views.xml',
         
         
         
@@ -32,23 +31,21 @@ Long description of module's purpose
    
     ],
     'assets': {
-        'web.assets_frontend': [
-            'pos_kitchen_screen_odoo_extension/static/src/js/kitchen_notification_service.js',
-            'pos_kitchen_screen_odoo_extension/static/src/js/kitchen_integration.js',
-            'pos_kitchen_screen_odoo_extension/static/src/xml/kitchen_screen_template.xml',
-            
+        'point_of_sale._assets_pos': [
+            'pos_kitchen_screen_odoo_extension/static/src/js/order_button.js',
+            'pos_kitchen_screen_odoo_extension/static/src/js/order_pay_extension.js',
+            # CSS
+            'pos_kitchen_screen_odoo_extension/static/src/css/notification.css',
             
         ],
         'web.assets_backend': [
-             'pos_kitchen_screen_odoo_extension/static/src/js/kitchen_notification_service.js',
-             'pos_kitchen_screen_odoo_extension/static/src/js/kitchen_integration.js',
-             'pos_kitchen_screen_odoo/static/src/js/kitchen_screen.js',
-             'pos_kitchen_screen_odoo/static/src/js/kitchen_screen_ext.js'
-             'pos_kitchen_screen_odoo/static/src/xml/kitchen_screen_templates.xml',
+            'pos_kitchen_screen_odoo_extension/static/src/js/kitchen_screen_extension.js',
+           
+            
+        
              
-             
-             
-             
+                 
+            
         ],
     },
     
