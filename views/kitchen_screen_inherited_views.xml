@@ -14,17 +14,12 @@
                 <header>
                     <button name="action_duplicate_screen" 
                             type="object" 
-                            string="Duplicate Screen"
+                            string="Dupliquer l'écran"
                             class="btn-secondary"
                             icon="fa-clone"/>
-                    <button name="action_view_orders" 
-                            type="object" 
-                            string="View Orders"
-                            class="btn-info"
-                            icon="fa-cutlery"/>
                     <button name="toggle_active" 
                             type="object" 
-                            string="Toggle Active/Inactive"
+                            string="Active/Inactive"
                             class="btn-warning"
                             icon="fa-power-off"/>
                     <field name="active" widget="boolean_toggle" options="{'terminology': 'active'}"/>
